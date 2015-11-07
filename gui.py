@@ -13,12 +13,14 @@ class ModifyDialog( wx.Dialog ):
 
         sizer = wx.FlexGridSizer( cols = 2, vgap = 5, hgap = 5 )
 
+        # create control
         self.levelText = wx.TextCtrl( self, value = str(word.level) )
         self.rightText = wx.TextCtrl( self, value = str(word.right) )
         self.wrongText = wx.TextCtrl( self, value = str(word.wrong) )
         saveButton = wx.Button( self, label = 'Save' )
         cancelButton = wx.Button( self, label = 'Cancel' )
 
+        # add to sizer
         sizer.Add( wx.StaticText( self, label = 'level' ), 0,
                 wx.ALIGN_RIGHT|wx.ALIGN_CENTER_VERTICAL|wx.ALL, 5 )
         sizer.Add( self.levelText, 0, wx.EXPAND|wx.ALL, 5)
@@ -32,9 +34,11 @@ class ModifyDialog( wx.Dialog ):
         sizer.Add( saveButton, 0, wx.CENTER|wx.ALL, 5 )
         sizer.Add( cancelButton, 0, wx.CENTER|wx.ALL, 5 )
 
+        # bind events
         self.Bind( wx.EVT_BUTTON, self.onSave, saveButton )
         self.Bind( wx.EVT_BUTTON, self.onCancel, cancelButton )
 
+        # end
         self.SetSizer( sizer )
         sizer.Fit( self )
 
