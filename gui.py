@@ -4,12 +4,12 @@ import wx
 from core import *
 
 class ModifyDialog( wx.Dialog ):
-    def __init__( self, parent, word, col ):
+    def __init__( self, parent, word, row ):
         wx.Dialog.__init__( self, parent, title = word.word  )
 
         self.word = word
         self.parent = parent
-        self.col = col
+        self.row = row
 
         sizer = wx.FlexGridSizer( cols = 2, vgap = 5, hgap = 5 )
 
@@ -18,7 +18,7 @@ class ModifyDialog( wx.Dialog ):
         self.rightText = wx.TextCtrl( self, value = str(word.right) )
         self.wrongText = wx.TextCtrl( self, value = str(word.wrong) )
         saveButton = wx.Button( self, label = 'Save' )
-        cancelButton = wx.Button( self, label = 'Cancel' )
+        deleteButton = wx.Button( self, label = 'Delete' )
 
         # add to sizer
         sizer.Add( wx.StaticText( self, label = 'level' ), 0,
@@ -32,11 +32,11 @@ class ModifyDialog( wx.Dialog ):
         sizer.Add( self.wrongText, 0, wx.EXPAND|wx.ALL, 5 )
 
         sizer.Add( saveButton, 0, wx.CENTER|wx.ALL, 5 )
-        sizer.Add( cancelButton, 0, wx.CENTER|wx.ALL, 5 )
+        sizer.Add( deleteButton, 0, wx.CENTER|wx.ALL, 5 )
 
         # bind events
         self.Bind( wx.EVT_BUTTON, self.onSave, saveButton )
-        self.Bind( wx.EVT_BUTTON, self.onCancel, cancelButton )
+        self.Bind( wx.EVT_BUTTON, self.onDelete, deleteButton )
 
         # end
         self.SetSizer( sizer )
@@ -54,15 +54,20 @@ class ModifyDialog( wx.Dialog ):
         self.word.wrong = int(self.wrongText.GetValue())
 
         self.Destroy()
-        self.parent.showLine( self.col, self.word )
+        self.parent.showLine( self.row, self.word )
 
-    def onCancel( self, e ):
+    def onDelete( self, e ):
+        self.parent.vocabulary.deleteWord( self.word )
+        self.parent.wordlist.DeleteItem( self.row )
+        self.parent.refresh()
+
         self.Destroy()
 
 class ListFrame( wx.Frame ):
-    colName = ( 'Word', 'Level', 'Right', 'Wrong', 'Last', 'Add' )
+    colName = ( 'Word', 'Level', 'Right', 'Wrong', 'Last', 'Add', 'Next' )
     sortKey = ( lambda x:x.word, lambda x:x.level, lambda x:-x.right, lambda
-        x:-x.wrong, lambda x:-x.lastTime, lambda x:-x.addTime)
+        x:-x.wrong, lambda x:-x.lastTime, lambda x:-x.addTime, lambda
+        x:-x.nextTime )
 
     def __init__( self, parent, vocabulary ):
         wx.Frame.__init__( self, parent, title = "List", size = (800,600) )
@@ -77,7 +82,7 @@ class ListFrame( wx.Frame ):
         for i in range( len(self.vocabulary.vocabulary) ):
             self.wordlist.InsertStringItem( i, '' )
 
-        self.refresh( key = self.sortKey[-1] )
+        self.refresh()
 
         for i in range( len(self.colName) ):
             self.wordlist.SetColumnWidth( i, wx.LIST_AUTOSIZE )
@@ -85,20 +90,22 @@ class ListFrame( wx.Frame ):
         self.Bind( wx.EVT_LIST_COL_CLICK, self.onColClick, self.wordlist )
         self.Bind( wx.EVT_LIST_ITEM_ACTIVATED, self.onItemActivited, self.wordlist )
 
-    def refresh( self, key ):
+    def refresh( self, key = lambda x:-x.addTime ):
         # make a copy
         self.voc = self.vocabulary.vocabulary[0:]
         self.voc.sort( key = key )
         for i in range( len(self.voc) ):
             self.showLine( i, self.voc[i] )
 
-    def showLine( self, col, word ):
-        self.wordlist.SetStringItem( col, 0, word.word )
-        self.wordlist.SetStringItem( col, 1, str(word.level) + ' ' )
-        self.wordlist.SetStringItem( col, 2, str(word.right) )
-        self.wordlist.SetStringItem( col, 3, str(word.wrong) )
-        self.wordlist.SetStringItem( col, 4, easyTime(word.lastTime) )
-        self.wordlist.SetStringItem( col, 5, easyTime(word.addTime) )
+    def showLine( self, row, word ):
+        self.wordlist.SetStringItem( row, 0, word.word )
+        self.wordlist.SetStringItem( row, 1, str(word.level) + ' ' )
+        self.wordlist.SetStringItem( row, 2, str(word.right) )
+        self.wordlist.SetStringItem( row, 3, str(word.wrong) )
+        self.wordlist.SetStringItem( row, 4, easyTime(word.lastTime) )
+        self.wordlist.SetStringItem( row, 5, easyTime(word.addTime) )
+        self.wordlist.SetStringItem( row, 6, easyTime(self.vocabulary.
+            nextReviewTime( word )) )
 
     def onColClick( self, e ):
         col = e.GetColumn()
@@ -166,18 +173,27 @@ class MainFrame( wx.Frame ):
         indicate  = self.indicate  = []
         wordTexts = self.wordTexts = []
         detail    = self.detail    = []
-        font = wx.SystemSettings_GetFont(wx.SYS_SYSTEM_FONT).Bold()
+
+        font = self.reviewButton.GetFont()
 
         # add word detail lines
-        for i in range( self.WORD_NUM + 3 ):
+        for i in range( self.WORD_NUM + 4 ):
             sizer = wx.BoxSizer( wx.HORIZONTAL )
+
             indicate.append( wx.StaticText( panel, label = '     ' ) )
             wordTexts.append( wx.StaticText( panel, size = (100, -1),
                 style = wx.ALIGN_RIGHT ) )
             detail.append( wx.StaticText( panel, label = '' ) )
-            sizer.Add( indicate[i],  0, wx.EXPAND )
-            sizer.Add( wordTexts[i], 0, wx.EXPAND )
+
+            sizer.Add( indicate[i],  0, wx.ALIGN_CENTER_VERTICAL )
+            sizer.Add( wordTexts[i], 0, wx.ALIGN_CENTER_VERTICAL )
             sizer.Add( detail[i],    0, wx.EXPAND|wx.LEFT, 10 )
+            # set font size
+            font.SetPointSize( 11 )
+            wordTexts[i].SetFont( font )
+            font.SetPointSize(10)
+            detail[i].SetFont( font )
+
             self.wordSizer.Add( sizer, 0, wx.EXPAND|wx.BOTTOM|wx.TOP, 2 )
 
         mainSizer.Add( self.wordSizer, 0, wx.EXPAND|wx.LEFT, self.WORD_NUM )
@@ -217,7 +233,6 @@ class MainFrame( wx.Frame ):
 ##          REVIEW MODE                    
 ##
     def startReview( self, e ):
-        print 'start review'
         self.state = 'review'
 
         length = self.vocabulary.updateQueue()
@@ -264,7 +279,6 @@ class MainFrame( wx.Frame ):
         if ret == wx.NO:
             return
 
-        print 'submit'
         for i in range( len(self.nowlist) ):
             word = self.vocabulary.maplist[self.nowlist[i]]
             if self.isForgotten[i]:

@@ -16,6 +16,7 @@ class Word:
         self.level = level
         self.addTime = time.time()
         self.lastTime = self.addTime
+        self.nextTime = 0
         self.force = force
 
     def doRight( self ):
@@ -97,7 +98,7 @@ class VocabularyBook:
         self.data = shelve.open( self.filename )
 
         # set config update here
-        del self.data['config']
+        #del self.data['config']
 
         # load data from file
         if 'vocabulary' in self.data:
@@ -133,6 +134,7 @@ class VocabularyBook:
 
         if 'interval' not in cfg:
             print 'add interval to config'
+            '''
             cfg['interval'] = [ -1, 30, 30, 30, 30, day(1),
                             day(1), day(2), day(3), day(5), day(5), day(5),
                             day(10), day(15), day(20), day(30) ]
@@ -140,7 +142,6 @@ class VocabularyBook:
             cfg['interval'] = [ -1, hour(6), hour(12), day(1), day(1), day(1),
                             day(1), day(2), day(3), day(5), day(5), day(5),
                             day(10), day(15), day(20), day(30) ]
-                            '''
 
         if 'show' not in cfg:
             print 'add show to config'
@@ -184,13 +185,14 @@ class VocabularyBook:
 ##
     def addWord( self, word, dictname ):
         if word in self.maplist: # existed already
-            print word, 'existed already'
+            print 'ERROR:', word, 'existed already'
             return
 
         ret = Dictionary(dictname).getword(word)
         if ret:
             self.vocabulary.append( ret )
             self.maplist[word] = self.vocabulary[-1]
+            print 'add', word
         else:
             print "ERROE: cann't find word", word, 'in', dictname
 
@@ -198,6 +200,16 @@ class VocabularyBook:
         for word in wordlist:
             self.addWord( word, dictname )
 
+    def deleteWord( self, word ):
+        self.reviewQueue.remove( word.word )
+        self.vocabulary.remove( word )
+
+    # ugly, for temporary use
+    def nextReviewTime( self, word ):
+        # a margical expression
+        word.nextTime = time.time() - (self.config['interval'][word.level]
+                    - (time.time() - word.lastTime) )
+        return word.nextTime
 ##
 ##          PRINT FOR DEBUGGING
 ##
@@ -241,7 +253,9 @@ class Dictionary:
 # return a easily read time string
 def easyTime( oldTime ):
     delta = time.time() - oldTime
-    if delta < 3600:
+    if delta < 0:
+        return "0"
+    elif delta < 3600:
         return "%d minutes" % (delta / 60)
     elif delta < 24 * 3600:
         return "%d hours" % (delta / 3600)
