@@ -2,6 +2,7 @@
 
 import wx
 from core import *
+import download
 
 class ModifyDialog( wx.Dialog ):
     def __init__( self, parent, word, row ):
@@ -64,10 +65,10 @@ class ModifyDialog( wx.Dialog ):
         self.Destroy()
 
 class ListFrame( wx.Frame ):
-    colName = ( 'Word', 'Level', 'Right', 'Wrong', 'Last', 'Add', 'Next' )
+    colName = ( 'Word', 'Level', 'Right', 'Wrong', 'delta', 'Last', 'Add', 'Next' )
     sortKey = ( lambda x:x.word, lambda x:x.level, lambda x:-x.right, lambda
-        x:-x.wrong, lambda x:-x.lastTime, lambda x:-x.addTime, lambda
-        x:-x.nextTime )
+            x:-x.wrong, lambda x:x.right-x.wrong, lambda x:-x.lastTime, lambda
+            x:-x.addTime, lambda x:-x.nextTime )
 
     def __init__( self, parent, vocabulary ):
         wx.Frame.__init__( self, parent, title = "List", size = (800,600) )
@@ -102,9 +103,10 @@ class ListFrame( wx.Frame ):
         self.wordlist.SetStringItem( row, 1, str(word.level) + ' ' )
         self.wordlist.SetStringItem( row, 2, str(word.right) )
         self.wordlist.SetStringItem( row, 3, str(word.wrong) )
-        self.wordlist.SetStringItem( row, 4, easyTime(word.lastTime) )
-        self.wordlist.SetStringItem( row, 5, easyTime(word.addTime) )
-        self.wordlist.SetStringItem( row, 6, easyTime(self.vocabulary.
+        self.wordlist.SetStringItem( row, 4, str(word.right - word.wrong) )
+        self.wordlist.SetStringItem( row, 5, easyTime(word.lastTime) )
+        self.wordlist.SetStringItem( row, 6, easyTime(word.addTime) )
+        self.wordlist.SetStringItem( row, 7, easyTime(self.vocabulary.
             nextReviewTime( word )) )
 
     def onColClick( self, e ):
@@ -141,6 +143,10 @@ class MainFrame( wx.Frame ):
 ##
     def initVB( self ):
         self.vocabulary = VocabularyBook( self.DATAFILE )
+
+        # word unicode to str
+        #for word in self.vocabulary.vocabulary:
+        #    word.word = word.word.encode( 'utf-8' )
 
         self.vocabulary.updateQueue()
         self.state = 'home'
@@ -246,6 +252,7 @@ class MainFrame( wx.Frame ):
 
         self.nowlist = self.vocabulary.popMany( self.WORD_NUM )
         self.isForgotten = [False] * self.WORD_NUM
+        self.forgetFirstTime = []
 
         #---------- show words ----------#
         self.showPage()
@@ -282,11 +289,15 @@ class MainFrame( wx.Frame ):
         for i in range( len(self.nowlist) ):
             word = self.vocabulary.maplist[self.nowlist[i]]
             if self.isForgotten[i]:
+                self.forgetFirstTime.append(word.word)
                 word.doWrong()
                 self.vocabulary.forcePush( word.word )
             else:
                 word.doRight()
-                word.doUpgrade()
+                if word.word in self.forgetFirstTime:
+                    word.doRecord( False )
+                else:
+                    word.doRecord( True )
 
         #------------- redraw -----------#
         self.cleanPage()
@@ -336,11 +347,7 @@ class MainFrame( wx.Frame ):
         if code == wx.WXK_UP:
             self.now = (self.now - 1) % len( self.nowlist )
         elif code == wx.WXK_DOWN:
-            self.now += 1
-            if self.now == len( self.nowlist ):
-                self.now -= 1
-                self.onSubmit( None )
-                return
+            self.now = (self.now + 1) % len( self.nowlist )
         elif code == wx.WXK_LEFT:
             play = True
         elif code == wx.WXK_RIGHT:
@@ -406,12 +413,14 @@ class MainFrame( wx.Frame ):
         #ret = wx.MessageBox( self.STR['quit_cf'][0], self.STR['quit_cf'][1],
                 #wx.YES_NO | wx.YES_DEFAULT | wx.ICON_QUESTION) 
 
-        ret = wx.YES
+        self.vocabulary.storeData()
 
+        ret = wx.YES
         if ret == wx.YES:
             self.Destroy()
         else:
             e.Veto()
+
 
 app = wx.App()
 MainFrame( None, 'WorlKiller' )

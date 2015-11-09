@@ -21,16 +21,25 @@ class Word:
 
     def doRight( self ):
         self.right += 1
-        self.record.append( 1 )
         self.lastTime = time.time()
 
     def doWrong( self ):
         self.wrong += 1
-        self.record.append( 0 )
         self.lastTime = time.time()
 
-    def doUpgrade( self ):
+    def doRecord( self, passFirstTime ):
+        self.record.append( passFirstTime )
+
         self.level += 1
+
+        if self.level >= 2:
+            if False not in self.record[-2:]:
+                self.level += 1
+            if True not in self.record[-2:]:
+                self.level -= 2
+
+        print self.word, self.record
+
 
     def sets( self, **params ):
         for item in params:
@@ -61,6 +70,7 @@ class Word:
         print self.word, self.phonetic[0].encode('gbk','ignore'), self.\
                         phonetic[1].encode('gbk','ignore')
         print self.meaning
+        print 'level:', self.level
         print 'right:', self.right, '   wrong', self.wrong
         print 'addTime:', time.asctime( time.localtime(self.addTime) )
         print 'lastTime:', time.asctime( time.localtime(self.lastTime) )
@@ -118,7 +128,6 @@ class VocabularyBook:
         self.data['vocabulary'] = self.vocabulary
         self.data['reviewQueue'] = self.reviewQueue
         self.data['config'] = self.config
-        self.data.close()
 
 ##
 ##          CONFIG SETTINGS
@@ -146,7 +155,7 @@ class VocabularyBook:
         if 'show' not in cfg:
             print 'add show to config'
             cfg['show'] = {}
-            cfg['phonetic'] = 'us'
+            cfg['phonetic'] = 'uk'
             cfg['show']['phonetic']= True
             cfg['show']['word']    = True
             cfg['show']['meaning'] = True
@@ -224,6 +233,8 @@ class VocabularyBook:
         print '---------- Data Begin ----------'
         for word in self.vocabulary:
             word.printSelf()
+            if self.vocabulary.index(word) % 10 == 0:
+                raw_input( 'Enter' )
         print '----------- Data End -----------'
 
     def printConfig( self ):
@@ -299,9 +310,9 @@ if __name__ == '__main__' :
     mybook = VocabularyBook( 'book1.dat' )
     mybook.loadData()
 
-    mybook.addMany( wordlist, 'dict.txt' )
+    #mybook.addMany( wordlist, 'dict.txt' )
 
-    mybook.updateQueue()
-    mybook.printQueue()
-
+    #mybook.printData()
+    
+    mybook.storeData()
 

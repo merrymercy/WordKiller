@@ -8,15 +8,12 @@ import os
 
 
 class dictDownloader():
-    def __init__( self, listFile, dictFile ):
+    def __init__( self ):
         self.todownlist = []
         self.errorlist = []
         self.wordlist = []
         self.count = 0
-        
-        self.listFile = listFile
-        self.dictFile = dictFile
-
+       
         self.s =requests.Session()
         self.baseURL = 'http://cn.bing.com/dict/search?q='
 
@@ -92,27 +89,30 @@ class dictDownloader():
     def getErrorList( self ):
         return self.errorlist
 
-    def main( self ):
-        print '=START TO DOWNLOAD='
-        timer = time.clock()
-
-        try:
-            self.setListFile( self.listFile )
-            self.downList()
-        except Exception, e:
-            print 'ERROR:', e
-        finally:
-            self.storeFile( self.dictFile )
-
-        print '=DOWNLOAD FINISHED='
-        print 'Time used:', time.clock() - timer
-
-        if self.errorlist:
-            print 'Error occurred in downloading these words:'
-            for line in self.errorlist:
-                print line
-        raw_input( '<enter>' )
+listFile = 'list.txt'
+dictFile = 'dict.txt'
+openMode = 'a'
 
 if __name__ == '__main__':
-    dict = dictDownloader( 'list.txt', 'data.txt' )
-    dict.main()
+    print '=START TO DOWNLOAD='
+    timer = time.clock()
+
+    downloader = dictDownloader()
+    downloader.setListFile( listFile )
+
+    try:
+        downloader.downList()
+    except Exception, e:
+        print 'ERROR:', e
+    finally:
+        downloader.storeFile( dictFile, openMode )
+
+    print '=DOWNLOAD FINISHED='
+    print 'Time used:', time.clock() - timer
+
+    errorlist = downloader.getErrorList()
+    if errorlist:
+        print 'Error occurred in downloading these words:'
+        for line in errorlist:
+            print line
+    raw_input( '<enter>' )
