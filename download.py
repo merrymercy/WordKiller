@@ -60,7 +60,9 @@ class dictDownloader():
   
     def setListFile( self, filename ):
         for line in open( filename, 'r' ):
-            self.todownlist.append( line.strip() )
+            line = line.strip()
+            if line != '':
+                self.todownlist.append( line )
 
     def setList( self, todownlist ):
         self.todownlist = todownlist
