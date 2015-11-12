@@ -295,10 +295,6 @@ class MainFrame( wx.Frame ):
                 self.vocabulary.forcePush( word.word )
             else:
                 word.doRight()
-                if word.word in self.forgetFirstTime:
-                    word.doRecord( False )
-                else:
-                    word.doRecord( True )
 
         #------------- redraw -----------#
         self.cleanPage()

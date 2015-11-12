@@ -22,9 +22,16 @@ class Word:
     def doRight( self ):
         self.right += 1
         self.lastTime = time.time()
+        if self.force:
+            self.doRecord( False )
+        else:
+            self.doRecord( True )
+
+        self.force = False
 
     def doWrong( self ):
         self.wrong += 1
+        self.force = True
         self.lastTime = time.time()
 
     def doRecord( self, passFirstTime ):
@@ -74,7 +81,7 @@ class Word:
         print 'right:', self.right, '   wrong', self.wrong
         print 'addTime:', time.asctime( time.localtime(self.addTime) )
         print 'lastTime:', time.asctime( time.localtime(self.lastTime) )
-        print 'record:', self.record
+        print 'record:', self.record, self.force
 
 '''
 a = Word( 'abc', ('/asd/','/fzc/'), 'meaning' )
@@ -152,7 +159,6 @@ class VocabularyBook:
                             day(1), day(2), day(3), day(5), day(5), day(5),
                             day(10), day(15), day(20), day(30) ]
 
-        cfg['show']['word'] = False
         if 'show' not in cfg:
             print 'add show to config'
             cfg['show'] = {}
@@ -311,9 +317,9 @@ if __name__ == '__main__' :
     mybook = VocabularyBook( 'book1.dat' )
     mybook.loadData()
 
-    #mybook.addMany( wordlist, 'dict.txt' )
+    mybook.addMany( wordlist[:10], 'dict.txt' )
 
-    #mybook.printData()
+    mybook.printData()
     
     mybook.storeData()
 
