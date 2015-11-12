@@ -143,6 +143,7 @@ class MainFrame( wx.Frame ):
 ##
     def initVB( self ):
         self.vocabulary = VocabularyBook( self.DATAFILE )
+        self.config = self.vocabulary.config
 
         # word unicode to str
         #for word in self.vocabulary.vocabulary:
@@ -255,7 +256,7 @@ class MainFrame( wx.Frame ):
         self.forgetFirstTime = []
 
         #---------- show words ----------#
-        self.showPage()
+        self.showInit()
         self.now = -1
 
         #----------- mainloop -----------#
@@ -307,7 +308,7 @@ class MainFrame( wx.Frame ):
         if length > 0:
             self.nowlist = self.vocabulary.popMany( self.WORD_NUM )
             self.isForgotten = [False] * self.WORD_NUM
-            self.showPage()
+            self.showInit()
             self.now = -1
             self.SetFocus()
         else:
@@ -315,10 +316,12 @@ class MainFrame( wx.Frame ):
                     wx.OK )
             self.stopReview( None )
 
-    def showPage( self ):
+    def showInit( self ):
         for i in range( len(self.nowlist) ):
             word = self.vocabulary.maplist[self.nowlist[i]]
-            self.wordTexts[i].SetLabel( word.word )
+            if self.config['show']['word']:
+                self.wordTexts[i].SetLabel( word.word )
+
     def cleanPage( self ):
         for i in range( len(self.nowlist) ):
             self.indicate[i].SetLabel( '' )
@@ -327,30 +330,37 @@ class MainFrame( wx.Frame ):
             self.detail[i].SetLabel( '' )
         self.indicate[self.now].SetLabel( '' )
 
+    def showWord( self ):
+        word = self.vocabulary.maplist[self.nowlist[self.now]]
+
+        self.detail[self.now].SetLabel( word.toString() )
+        self.wordTexts[self.now].SetLabel( word.word )
+
+    def pronounce( self, word ):
+        self.snd = playMP3( ''.join(('.\\',self.vocabulary.config['phonetic'],
+            '\\',word,'.mp3')) )
+
     def refresh( self, previous, now ):
         word = self.vocabulary.maplist[self.nowlist[now]]
 
         self.indicate[previous].SetLabel( '' )
         self.indicate[now].SetLabel( u'→' )
         self.detail[previous].SetLabel( '' )
-        self.detail[now].SetLabel( word.toString() )
 
-        self.snd = playMP3( ''.join(('.\\',self.vocabulary.config['phonetic'],
-            '\\',word.word,'.mp3')) )
+        self.pronounce( word.word )
 
     def onKeyDownReview( self, e ):
         previous = self.now
-        play = False  # whether play pronouciation
 
         code = e.GetKeyCode()
 
-        if code == wx.WXK_UP:
+        if code == ord('W'):
             self.now = (self.now - 1) % len( self.nowlist )
-        elif code == wx.WXK_DOWN:
+        elif code == ord('S'):
             self.now = (self.now + 1) % len( self.nowlist )
-        elif code == wx.WXK_LEFT:
-            play = True
-        elif code == wx.WXK_RIGHT:
+        elif code == ord('A'):
+            self.showWord()
+        elif code == ord('D'):
             word = self.vocabulary.maplist[self.nowlist[self.now]]
             if self.isForgotten[self.now]:
                 self.isForgotten[self.now] = False
@@ -362,8 +372,10 @@ class MainFrame( wx.Frame ):
 
                 self.wordTexts[self.now].SetForegroundColour( 'red' )
                 self.wordTexts[self.now].SetLabel( word.word )
+        elif code == ord('Q'):
+            self.pronounce( self.nowlist[self.now] )
 
-        if previous != self.now or play:
+        if previous != self.now:
             self.refresh( previous, self.now  )
 
     # for some focus problems

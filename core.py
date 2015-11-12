@@ -152,6 +152,7 @@ class VocabularyBook:
                             day(1), day(2), day(3), day(5), day(5), day(5),
                             day(10), day(15), day(20), day(30) ]
 
+        cfg['show']['word'] = False
         if 'show' not in cfg:
             print 'add show to config'
             cfg['show'] = {}
