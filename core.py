@@ -164,7 +164,7 @@ class VocabularyBook:
             cfg['show'] = {}
             cfg['phonetic'] = 'uk'
             cfg['show']['phonetic']= True
-            cfg['show']['word']    = True
+            cfg['show']['word']    = False
             cfg['show']['meaning'] = True
 
     def setConfig( self, key, value ):

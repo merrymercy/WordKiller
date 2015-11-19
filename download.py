@@ -6,6 +6,10 @@ import re
 import time
 import os
 
+#
+# download words details from http://cn.bing.com/dict
+# and add to the dictionary file
+#
 
 class dictDownloader():
     def __init__( self ):
@@ -41,7 +45,7 @@ class dictDownloader():
         # US MP3 file
         tag_a = div.next_sibling.a
         r = self.s.get( re.search( "http:.*?mp3", tag_a['onclick'] ).group(),
-                                                        stream = True)
+                                                        stream = True )
         open(''.join(('.\\us\\',word,'.mp3')), 'wb').write(r.raw.read())
 
         # UK phonetic
@@ -49,8 +53,8 @@ class dictDownloader():
         phonetic.append( div.text )
         # UK MP3 file
         tag_a = div.next_sibling.a
-        r = self.s.get( re.search( "http:.*?mp3", tag_a['onclick'] ).group() )
-
+        r = self.s.get( re.search( "http:.*?mp3", tag_a['onclick'] ).group(),
+                                                        stream = True )
         open(''.join(('.\\uk\\',word,'.mp3')), 'wb').write(r.raw.read())
 
         return ''.join( ('<e>',word.encode('utf-8'),'</e>\n','<p>',
@@ -91,6 +95,8 @@ class dictDownloader():
     def getErrorList( self ):
         return self.errorlist
 
+# listFile : a list of words to download
+# dictFile : where the detail will be added to
 listFile = 'list.txt'
 dictFile = 'dict.txt'
 openMode = 'a'
@@ -100,7 +106,8 @@ if __name__ == '__main__':
     timer = time.clock()
 
     downloader = dictDownloader()
-    downloader.setListFile( listFile )
+    #downloader.setListFile( listFile )
+    downloader.setList( ['fulfil', 'faint' ] )
 
     try:
         downloader.downList()

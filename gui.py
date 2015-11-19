@@ -2,7 +2,6 @@
 
 import wx
 from core import *
-import download
 
 class ModifyDialog( wx.Dialog ):
     def __init__( self, parent, word, row ):
@@ -332,9 +331,12 @@ class MainFrame( wx.Frame ):
         self.detail[self.now].SetLabel( word.toString() )
         self.wordTexts[self.now].SetLabel( word.word )
 
-    def pronounce( self, word ):
-        self.snd = playMP3( ''.join(('.\\',self.vocabulary.config['phonetic'],
-            '\\',word,'.mp3')) )
+    def pronounce( self, word, style = None ):
+        if style != None:
+            self.snd = playMP3( ''.join(('.\\', style, '\\' , word , '.mp3')) )
+        else:
+            self.snd = playMP3( ''.join(('.\\',self.vocabulary.
+                config['phonetic'], '\\' , word , '.mp3')) )
 
     def refresh( self, previous, now ):
         word = self.vocabulary.maplist[self.nowlist[now]]
@@ -360,16 +362,22 @@ class MainFrame( wx.Frame ):
             word = self.vocabulary.maplist[self.nowlist[self.now]]
             if self.isForgotten[self.now]:
                 self.isForgotten[self.now] = False
-
                 self.wordTexts[self.now].SetForegroundColour( 'black' )
                 self.wordTexts[self.now].SetLabel( word.word )
             else:
                 self.isForgotten[self.now] = True
-
                 self.wordTexts[self.now].SetForegroundColour( 'red' )
-                self.wordTexts[self.now].SetLabel( word.word )
+                self.wordTexts[self.now].SetLabel( '*' )
+                #self.wordTexts[self.now].SetLabel( word.word )
         elif code == ord('Q'):
-            self.pronounce( self.nowlist[self.now] )
+            self.pronounce( self.nowlist[self.now], 'uk' )
+        elif code == ord('E'):
+            self.pronounce( self.nowlist[self.now], 'us' )
+        elif code == ord('F'):
+            self.onSubmit( None )
+            return
+        elif code == ord('X'):
+            self.wordTexts[self.now].SetLabel( '' )
 
         if previous != self.now:
             self.refresh( previous, self.now  )
