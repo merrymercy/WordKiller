@@ -1,57 +1,59 @@
 # -*- coding: utf-8 -*-
-import shelve
+import sqlite3
 import re
 import time
 import random
+import os
 
 class Word:
-    def __init__( self, word, phonetic, meaning, right = 0, wrong = 0,
-                        level = 0, lastTime = 0, force = False ):
+    def __init__( self, word, phonetic, meaning ):
         self.word = word
         self.phonetic = phonetic
         self.meaning = meaning
-        self.right = right
-        self.wrong = wrong
-        self.record = []
-        self.level = level
+        self.right = 0
+        self.wrong = 0
+        self.record = ''
+        self.level = 0
         self.addTime = time.time()
         self.lastTime = self.addTime
         self.nextTime = 0
-        self.force = force
+        self.inWrong = False
 
     def doRight( self ):
         self.right += 1
         self.lastTime = time.time()
-        if self.force:
+        if self.inWrong:
             self.doRecord( False )
         else:
             self.doRecord( True )
 
-        self.force = False
+        self.inWrong = False
 
     def doWrong( self ):
         self.wrong += 1
-        self.force = True
+        self.inWrong = True
         self.lastTime = time.time()
 
+    # record and upgrade/degrade
     def doRecord( self, passFirstTime ):
-        self.record.append( passFirstTime )
+        if passFirstTime:
+            self.record += 'R'
+        else:
+            self.record += 'W'
 
         self.level += 1
 
         if self.level >= 2:
-            if False not in self.record[-2:]:
+            if 'W' not in self.record[-2:]:
                 self.level += 1
-            if True not in self.record[-2:]:
+            if 'R' not in self.record[-2:]:
                 self.level -= 2
-
-        print self.word, self.record
-
 
     def sets( self, **params ):
         for item in params:
             setattr( self, item, params[item] )
 
+    # return whether the word match the condition to review
     def match( self, interval ):
         if self.level < 0: level = 0
         else:              level = self.level
@@ -81,14 +83,7 @@ class Word:
         print 'right:', self.right, '   wrong', self.wrong
         print 'addTime:', time.asctime( time.localtime(self.addTime) )
         print 'lastTime:', time.asctime( time.localtime(self.lastTime) )
-        print 'record:', self.record, self.force
-
-'''
-a = Word( 'abc', ('/asd/','/fzc/'), 'meaning' )
-a.printSelf()
-a.doWrong()
-print a.match( [-1, 0, 0] )
-'''
+        print 'record:', self.record, self.inWrong
 
 class VocabularyBook:
     def __init__( self, filename ):
@@ -112,29 +107,88 @@ class VocabularyBook:
 ##          LOAD & STORE
 ##
     def loadData( self ):
-        self.data = shelve.open( self.filename )
 
-        # set config update here
-        #del self.data['config']
+        # open database
+        if os.path.exists( self.filename ):
+            db = sqlite3.connect( self.filename )
+        else:
+            print self.filename, 'does not exist, create it'
+            db = sqlite3.connect( self.filename )
+            db.execute( ''' CREATE TABLE vocabulary (
+                WORD            TEXT,
+                PHONETIC_US     TEXT,
+                PHONETIC_UK     TEXT,
+                MEANING         TEXT,
+                RIGHT           INT,
+                WRONG           INT,
+                RECORD          TEXT,
+                LEVEL           INT,
+                ADDTIME         REAL,
+                LASTTIME        REAL,
+                NEXTTIME        REAL,
+                INWRONG         INT
+                )
+                ''' )
+            db.execute( ''' CREATE TABLE reviewqueue ( WORD TEXT ) ''' )
+            db.execute( ''' CREATE TABLE config ( KEY TEXT, VALUE TEXT ) ''' )
+            db.commit()
 
-        # load data from file
-        if 'vocabulary' in self.data:
-            self.vocabulary = self.data['vocabulary']
-        if 'reviewQueue' in self.data:
-            self.reviewQueue = self.data['reviewQueue']
-        if 'config' in self.data:
-            self.config = self.data['config']
+        # load vocabulary from database
+        cursor = db.execute( 'SELECT word, phonetic_us, phonetic_uk, meaning,'
+                   'right, wrong, record, level, addtime, lasttime, nexttime,'
+                   'inwrong FROM vocabulary' )
+        for row in cursor:
+            word = Word( row[0], (row[1],row[2]), row[3] )
+            word.right   = row[4];  word.wrong = row[5]
+            word.record  = row[6];  word.level = row[7]
+            word.addTime = row[8];  word.lastTime = row[9]
+            word.nextTime= row[10]; word.inWrong = True if row[0] else False
 
+            self.vocabulary.append( word )
+
+        # load review queue from database
+        row = db.execute( 'SELECT word FROM reviewqueue' ).fetchone()
+        if row:
+            self.reviewQueue = row[0].split(',')
+
+        # load configration from datebase
+        cursor = db.execute( 'SELECT key, value FROM config' )
+        for row in cursor:
+            self.config[row[0]] = self.config[row[1]]
+
+        # init configration
         self.initConfig()
 
         # add every word to word list
         for item in self.vocabulary:
             self.maplist[item.word] = item
 
+        self.db = db
+
     def storeData( self ):
-        self.data['vocabulary'] = self.vocabulary
-        self.data['reviewQueue'] = self.reviewQueue
-        self.data['config'] = self.config
+        db = self.db
+
+        for word in self.vocabulary:
+            db.execute( 'UPDATE vocabulary SET'
+                ' word=' + '"' + word.word + '"' +
+                ',phonetic_us=' + '"' + word.phonetic[0] + '"' +
+                ',phonetic_uk=' + '"' + word.phonetic[1] + '"' +
+                ',meaning='  + '"' + word.meaning + '"' +
+                ',right='    + str(word.right) +
+                ',wrong='    + str(word.wrong) +
+                ',record='   + '"' + word.record + '"' +
+                ',level='    + str(word.level) +
+                ',addtime='  + str(word.addTime) +
+                ',lasttime=' + str(word.lastTime) +
+                ',nexttime=' + str(word.nextTime) +
+                ',inwrong='  + ('1' if word.inWrong else '0') +
+                ' WHERE word="' + word.word + '"' )
+
+        string = ','.join( self.reviewQueue )
+        db.execute( 'UPDATE reviewqueue SET word="' + string + '"' )
+
+        db.commit()
+        db.close()
 
 ##
 ##          CONFIG SETTINGS
@@ -195,29 +249,41 @@ class VocabularyBook:
         if word in self.maplist:
             self.reviewQueue.append( word )
         else:
-            print 'ERROR : add an unexsited word to queue'
+            print 'ERROR : add an unexisted word to queue'
 ##
 ##          WORD I/O
 ##
     def addWord( self, word, dictname ):
-        if word in self.maplist: # existed already
+        if word in self.maplist:
             print 'ERROR:', word, 'existed already'
             return
 
         ret = Dictionary(dictname).getword(word)
         if ret:
+            self.db.execute( 'INSERT INTO vocabulary VALUES (?' + ',?'*11 + ')',
+                ( ret.word, ret.phonetic[0], ret.phonetic[1], ret.meaning,
+                  ret.right, ret.wrong, ret.record, ret.level, ret.addTime,
+                  ret.lastTime, ret.nextTime, 1 if ret.inWrong else 0 ) )
+            self.db.commit()
+
             self.vocabulary.append( ret )
             self.maplist[word] = self.vocabulary[-1]
             print 'add', word
-        else:
-            print "ERROE: cann't find word", word, 'in', dictname
 
     def addMany( self, wordlist, dictname ):
         for word in wordlist:
             self.addWord( word, dictname )
 
     def deleteWord( self, word ):
-        self.reviewQueue.remove( word.word )
+        if word.word not in self.maplist:
+            print 'ERROR:', 'delete unexisted word', word
+            return
+
+        self.db.execute( 'DELETE from vocabulary WHERE word="' +word.word+ '"' )
+        self.db.commit()
+
+        if word.word in self.reviewQueue:
+            self.reviewQueue.remove( word.word )
         self.vocabulary.remove( word )
 
     # ugly, for temporary use
@@ -226,6 +292,7 @@ class VocabularyBook:
         word.nextTime = time.time() - (self.config['interval'][word.level]
                     - (time.time() - word.lastTime) )
         return word.nextTime
+
 ##
 ##          PRINT FOR DEBUGGING
 ##
@@ -253,17 +320,27 @@ class VocabularyBook:
 class Dictionary:
     def __init__( self, filename ):
         self.dictname = filename
-        self.text = open( filename ).read().decode( 'utf-8' )
+
 
     def getword( self, word ):
-        pat = re.compile( ''.join(("<e>", word, "</e>.*?<p><us>(.*?)</us>",
-                        "<uk>(.*?)</uk></p>.*?<c>(.*?)</c>" )), re.S )
 
-        match = pat.search( self.text )
-        if match:
-            return Word( word, (match.group(1),match.group(2)), match.group(3))
+        # todo: move connection to __init__ and optimize vocabulary.addMany()
+        if os.path.exists( self.dictname ):
+            db = sqlite3.connect( self.dictname )
         else:
+            print 'ERROR:', self.dictname, 'does not exist'
             return None
+
+        row = db.execute( 'SELECT word, phonetic_us, phonetic_uk,'
+                'meaning FROM dictionary WHERE word="' + word + '"').fetchone()
+
+        if row:
+            return Word( row[0], (row[1], row[2]), row[3] )
+        else:
+            print "ERROE: cann't find word", word, 'in', self.dictname
+            return None
+
+        db.close()
 
     def printList( self ):
         pass
@@ -308,13 +385,14 @@ def playMP3( filename ):
 
 if __name__ == '__main__' :
 
+    '''
     wordlist = ( 'zinc','spite','luxury','setback','primarily','exquisite',
                  'decimal','considerable','barren','yoke','inlet','distort',
                  'slack','fabricate','yield','defiance','cholesterol','yield',
                  'reward','maintain','arrogant','afford','ignite','flat',
                  'define','harmony','paradise','plea','merely','ponder',)
 
-    mybook = VocabularyBook( 'book1.dat' )
+    mybook = VocabularyBook( 'CORE.db' )
     mybook.loadData()
 
     mybook.addMany( wordlist[:10], 'dict.txt' )
@@ -322,4 +400,5 @@ if __name__ == '__main__' :
     mybook.printData()
     
     mybook.storeData()
+    '''
 

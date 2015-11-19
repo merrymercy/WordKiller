@@ -115,7 +115,7 @@ class dictDownloader():
     def getErrorList( self ):
         return self.errorlist
 
-listFile = 'list3.txt'
+listFile = 'list.txt'
 dictFile = 'dict.db'
 
 if __name__ == '__main__':

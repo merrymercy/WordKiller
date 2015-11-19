@@ -119,8 +119,8 @@ class ListFrame( wx.Frame ):
         dialog.Show()
 
 class MainFrame( wx.Frame ):
-    DATAFILE = 'book1.dat'
-    DICTFILE = 'dict.txt'
+    DATAFILE = 'book1.db'
+    DICTFILE = 'dict.db'
     WORD_NUM = 20 # words per page
     STR = {}
     STR['no_word'] = ( 'No words need to be reviewd', 'No Words' )
@@ -145,8 +145,8 @@ class MainFrame( wx.Frame ):
         self.config = self.vocabulary.config
 
         # word unicode to str
-        #for word in self.vocabulary.vocabulary:
-        #    word.word = word.word.encode( 'utf-8' )
+        for word in self.vocabulary.vocabulary:
+            word.word = word.word.encode( 'utf-8' )
 
         self.vocabulary.updateQueue()
         self.state = 'home'
@@ -337,7 +337,7 @@ class MainFrame( wx.Frame ):
                                             word , '.mp3')) )
         else:
             self.snd = playMP3( ''.join(('.\\audio\\',self.vocabulary.
-                config['phonetic'], '\\' , word , '.mp3')) )
+                getConfig( 'phonetic' ), '\\' , word , '.mp3')) )
 
     def refresh( self, previous, now ):
         word = self.vocabulary.maplist[self.nowlist[now]]
@@ -429,8 +429,6 @@ class MainFrame( wx.Frame ):
     def onCloseWindow( self, e ):
         #ret = wx.MessageBox( self.STR['quit_cf'][0], self.STR['quit_cf'][1],
                 #wx.YES_NO | wx.YES_DEFAULT | wx.ICON_QUESTION) 
-
-        self.vocabulary.storeData()
 
         ret = wx.YES
         if ret == wx.YES:
