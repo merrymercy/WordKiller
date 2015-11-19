@@ -46,7 +46,7 @@ class dictDownloader():
         tag_a = div.next_sibling.a
         r = self.s.get( re.search( "http:.*?mp3", tag_a['onclick'] ).group(),
                                                         stream = True )
-        open(''.join(('.\\us\\',word,'.mp3')), 'wb').write(r.raw.read())
+        open(''.join(('.\\audio\\us\\',word,'.mp3')), 'wb').write(r.raw.read())
 
         # UK phonetic
         div = div.next_sibling.next_sibling
@@ -55,7 +55,7 @@ class dictDownloader():
         tag_a = div.next_sibling.a
         r = self.s.get( re.search( "http:.*?mp3", tag_a['onclick'] ).group(),
                                                         stream = True )
-        open(''.join(('.\\uk\\',word,'.mp3')), 'wb').write(r.raw.read())
+        open(''.join(('.\\audio\\uk\\',word,'.mp3')), 'wb').write(r.raw.read())
 
         return ''.join( ('<e>',word.encode('utf-8'),'</e>\n','<p>',
                '<us>', phonetic[0].encode('utf-8').strip(), '</us>',

@@ -333,9 +333,10 @@ class MainFrame( wx.Frame ):
 
     def pronounce( self, word, style = None ):
         if style != None:
-            self.snd = playMP3( ''.join(('.\\', style, '\\' , word , '.mp3')) )
+            self.snd = playMP3( ''.join(('.\\audio\\', style, '\\' ,
+                                            word , '.mp3')) )
         else:
-            self.snd = playMP3( ''.join(('.\\',self.vocabulary.
+            self.snd = playMP3( ''.join(('.\\audio\\',self.vocabulary.
                 config['phonetic'], '\\' , word , '.mp3')) )
 
     def refresh( self, previous, now ):
