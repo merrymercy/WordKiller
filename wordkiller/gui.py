@@ -120,7 +120,7 @@ class ListFrame( wx.Frame ):
 
 class MainFrame( wx.Frame ):
     DATAFILE = 'book1.db'
-    DICTFILE = 'dict.db'
+    DICTFILE = 'dict15000.db'
     WORD_NUM = 20 # words per page
     STR = {}
     STR['no_word'] = ( 'No words need to be reviewd', 'No Words' )

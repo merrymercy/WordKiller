@@ -9,16 +9,26 @@ import requests
 from bs4 import BeautifulSoup
 
 class dictDownloader():
-    def __init__( self ):
+    def __init__( self, dictFile ):
         self.todownlist = []
         self.errorlist = []
         self.wordlist = []
+        self.dictFile = dictFile
         self.count = 0
        
         self.s =requests.Session()
         self.baseURL = 'http://cn.bing.com/dict/search?q='
 
     def downWord( self, word ):
+        if os.path.exists( self.dictFile ):
+            db = sqlite3.connect( self.dictFile )
+            cur = db.execute(''.join(('SELECT word FROM dictionary WHERE word=',
+                                    '"', word, '"')) )
+            if cur.fetchone():
+                print word, 'already existed'
+                return None
+
+ 
         self.count += 1
         print '------ download', str(self.count), word, '------'
         data = self.s.get( ''.join( (self.baseURL, word) ) )
@@ -73,25 +83,26 @@ class dictDownloader():
         for item in self.todownlist:
             try:
                 word = self.downWord( item )
-                self.wordlist.append( word )
+                if word:
+                    self.wordlist.append( word )
             except Exception, e:
                 self.errorlist.append( item )
                 print 'Error in downloading', item
                 print e
 
-    def storeFile( self, filename = 'default.db' ):
-        print '------ store to', filename, '------'
+    def storeFile( self ):
+        print '------ store to', self.dictFile, '------'
 
         # if do not exist, create the table
-        if os.path.exists( filename ):
-            db = sqlite3.connect( filename )
+        if os.path.exists( self.dictFile ):
+            db = sqlite3.connect( self.dictFile )
         else:
-            print filename, 'does not exist, create it'
-            db = sqlite3.connect( filename )
+            print self.dictFile, 'does not exist, create it'
+            db = sqlite3.connect( self.dictFile )
             db.execute( ''' CREATE TABLE dictionary (
                 WORD            TEXT,
-                US_PHONETIC     TEXT,
-                UK_PHONETIC     TEXT,
+                PHONETIC_US     TEXT,
+                PHONETIC_UK     TEXT,
                 MEANING         TEXT
                 )
                 ''' )
@@ -116,28 +127,35 @@ class dictDownloader():
         return self.errorlist
 
 listFile = 'list.txt'
-dictFile = 'dict.db'
+dictFile = 'dict15000.db'
+errFile  = 'error.txt'
 
 if __name__ == '__main__':
-    print '=START TO DOWNLOAD='
-    timer = time.clock()
 
-    downloader = dictDownloader()
-    downloader.setListFile( listFile )
+    def downFile( listFile, dictFile, errFile ):
+        print '=START TO DOWNLOAD='
+        timer = time.clock()
+        downloader = dictDownloader( dictFile )
+        downloader.setListFile( listFile )
 
-    try:
-        downloader.downList()
-    except Exception, e:
-        print 'ERROR:', e
-    finally:
-        downloader.storeFile( dictFile )
+        try:
+            downloader.downList()
+        except Exception, e:
+            print 'ERROR:', e
+        finally:
+            downloader.storeFile()
 
-    print '=DOWNLOAD FINISHED='
-    print 'Time used:', time.clock() - timer
+        print '=DOWNLOAD FINISHED='
+        print 'Time used:', time.clock() - timer
 
-    errorlist = downloader.getErrorList()
-    if errorlist:
-        print 'Error occurred in downloading these words:'
-        for line in errorlist:
-            print line
-    raw_input( '<enter>' )
+        errorlist = downloader.getErrorList()
+        if errorlist:
+            err = open( errFile, 'a' )
+            print 'Error occurred in downloading these words:'
+            for line in errorlist:
+                print line
+                err.write( line + '\n' )
+            err.close()
+        raw_input( '<enter>' )
+
+    downFile( listFile, dictFile, errFile )
