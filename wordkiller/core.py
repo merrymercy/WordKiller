@@ -41,13 +41,18 @@ class Word:
         else:
             self.record += 'W'
 
-        self.level += 1
+        if self.record[-3:] == 'RRR':
+            self.level += 3
+        elif self.record[-2:] == 'RR':
+            self.level += 2
+        elif self.record[-3:] == 'WWW':
+            self.level = 0
+        elif self.record[-2:] == 'WW':
+            self.level -= 1
+        else:
+            self.level += 1
 
-        if self.level >= 2:
-            if 'W' not in self.record[-2:]:
-                self.level += 1
-            if 'R' not in self.record[-2:]:
-                self.level -= 2
+        print self.record
 
     def sets( self, **params ):
         for item in params:
@@ -142,13 +147,13 @@ class VocabularyBook:
             word.right   = row[4];  word.wrong = row[5]
             word.record  = row[6];  word.level = row[7]
             word.addTime = row[8];  word.lastTime = row[9]
-            word.nextTime= row[10]; word.inWrong = True if row[0] else False
+            word.nextTime= row[10]; word.inWrong = True if row[11] else False
 
             self.vocabulary.append( word )
 
         # load review queue from database
         row = db.execute( 'SELECT word FROM reviewqueue' ).fetchone()
-        if row:
+        if row and row[0] != '':
             self.reviewQueue = row[0].split(',')
 
         # load configration from datebase
@@ -184,6 +189,7 @@ class VocabularyBook:
                 ',inwrong='  + ('1' if word.inWrong else '0') +
                 ' WHERE word="' + word.word + '"' )
 
+        #if self.reviewQueue != []:
         string = ','.join( self.reviewQueue )
         db.execute( 'UPDATE reviewqueue SET word="' + string + '"' )
 
@@ -211,7 +217,7 @@ class VocabularyBook:
             '''
             cfg['interval'] = [ -1, hour(6), hour(12), day(1), day(1), day(1),
                             day(1), day(2), day(3), day(5), day(5), day(5),
-                            day(10), day(15), day(20), day(30) ]
+                            day(10), day(15), day(20), day(30) ]+20*[day(30)]
 
         if 'show' not in cfg:
             print 'add show to config'
@@ -284,6 +290,7 @@ class VocabularyBook:
 
         if word.word in self.reviewQueue:
             self.reviewQueue.remove( word.word )
+        del self.maplist.remove[word.word]
         self.vocabulary.remove( word )
 
     # ugly, for temporary use
