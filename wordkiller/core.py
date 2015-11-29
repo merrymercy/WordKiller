@@ -69,6 +69,20 @@ class Word:
         else:
             return False
 
+    def isSimilar( self, word ):
+        if self.word == word:
+            return False
+
+        i = j = 0
+        length = min( len(self.word), len(word) )
+
+        while i < length and self.word[i] == word[i]:
+            i += 1
+        while j < length and self.word[-j-1] == word[-j-1]:
+            j += 1
+
+        return 1.0 * (i + j) / ((len(self.word)+len(word)) / 2) > 0.8
+
     def toString( self ):
         strlist = []
         strlist.append( self.meaning )

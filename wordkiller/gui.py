@@ -210,7 +210,7 @@ class MainFrame( wx.Frame ):
         self.submitButton  = wx.Button( panel, label = u'提交' )
         self.remainText = wx.StaticText( panel, label = u'还剩 %3d 个'
                 % len(self.vocabulary.reviewQueue) )
-        self.timeText  = wx.StaticText( panel, label = u'用时 5:30  '  )
+        self.timeText  = wx.StaticText( panel, label = ' ' * 20 )
 
         sizer.Add( self.submitButton, 0, wx.ALIGN_CENTER|wx.ALL, 5 )
         sizer.Add( wx.StaticText(panel, label = '' ), 1, wx.EXPAND )
@@ -264,6 +264,12 @@ class MainFrame( wx.Frame ):
         self.Bind( wx.EVT_BUTTON, self.stopReview, self.reviewButton )
         self.Bind( wx.EVT_BUTTON, self.onSubmit, self.submitButton )
 
+        #------------- timer ------------#
+        self.timer = wx.Timer(self)
+        self.Bind( wx.EVT_TIMER, self.onTimer, self.timer )
+        self.timer.Start( 1000 )
+        self.seconds = 0
+        
         # setting for focus
         self.firstButton.Bind( wx.EVT_SET_FOCUS, self.onSetFocus_b )
         self.SetFocus()
@@ -271,9 +277,12 @@ class MainFrame( wx.Frame ):
     def stopReview( self, e ):
         #------------- unbind -----------#
         self.Unbind( wx.EVT_KEY_DOWN)
+        self.Unbind( wx.EVT_TIMER )
+        self.timer.Stop()
+        self.firstButton.Unbind( wx.EVT_SET_FOCUS )
+
         self.reviewButton.SetLabel( u'复习' )
         self.Bind( wx.EVT_BUTTON, self.startReview, self.reviewButton )
-        self.firstButton.Unbind( wx.EVT_SET_FOCUS )
 
         #---------- clean screen --------#
         self.cleanPage()
@@ -369,7 +378,6 @@ class MainFrame( wx.Frame ):
                 self.isForgotten[self.now] = True
                 self.wordTexts[self.now].SetForegroundColour( 'red' )
                 self.wordTexts[self.now].SetLabel( '*' )
-                #self.wordTexts[self.now].SetLabel( word.word )
         elif code == ord('Q'):
             self.pronounce( self.nowlist[self.now], 'uk' )
         elif code == ord('E'):
@@ -377,6 +385,13 @@ class MainFrame( wx.Frame ):
         elif code == ord('F'):
             self.onSubmit( None )
             return
+        elif code == ord('Z'):
+            word = self.vocabulary.maplist[self.nowlist[self.now]]
+            string = ''
+            for item in self.vocabulary.maplist:
+                if word.isSimilar( item ):
+                    string += item + '\n'
+            self.detail[self.now].SetLabel( string[:-1] )
         elif code == ord('X'):
             self.wordTexts[self.now].SetLabel( '' )
 
@@ -389,6 +404,12 @@ class MainFrame( wx.Frame ):
             e.Skip()
         else:
             self.SetFocus()
+
+    def onTimer( self, e ):
+        self.seconds += 1
+        self.timeText.SetLabel( u'用时 ' + '%d:%02d  ' %
+                        (self.seconds / 60, self.seconds % 60)  ) 
+
 ##
 ##          ADD WORDS
 ##
