@@ -81,7 +81,7 @@ class Word:
         while j < length and self.word[-j-1] == word[-j-1]:
             j += 1
 
-        return 1.0 * (i + j) / ((len(self.word)+len(word)) / 2) > 0.8
+        return 1.0 * (i + j) / ((len(self.word)+len(word)) / 2) > 0.7
 
     def toString( self ):
         strlist = []
@@ -304,7 +304,7 @@ class VocabularyBook:
 
         if word.word in self.reviewQueue:
             self.reviewQueue.remove( word.word )
-        del self.maplist.remove[word.word]
+        del self.maplist[word.word]
         self.vocabulary.remove( word )
 
     # ugly, for temporary use
