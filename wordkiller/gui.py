@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import wx
+import winsound
 from core import *
 
 class ModifyDialog(wx.Dialog):
@@ -265,7 +266,8 @@ class MainFrame(wx.Frame):
 
         #---------- show words ----------#
         self.showInit()
-        self.now = -1
+        self.now = 0
+        self.refresh(-1, self.now)
 
         #----------- mainloop -----------#
         #self.Bind(wx.EVT_KEY_DOWN, self.onKeyDownReview)
@@ -366,14 +368,17 @@ class MainFrame(wx.Frame):
         previous = self.now
 
         code = e.GetKeyCode()
-
-        if code == ord('W'):
+        if code == wx.WXK_UP:
             self.now = (self.now - 1) % len(self.nowlist)
-        elif code == ord('S'):
+        elif code == wx.WXK_DOWN:
             self.now = (self.now + 1) % len(self.nowlist)
-        elif code == ord('A'):
-            self.showWord()
-        elif code == ord('D'):
+        elif code == wx.WXK_LEFT or code == wx.WXK_TAB:  # swich show detail
+            if self.detail[self.now].GetLabel() == '':
+                self.showWord()
+            else:
+                self.detail[self.now].SetLabel('')
+                self.wordTexts[self.now].SetLabel('')
+        elif code == wx.WXK_RIGHT:                       # mark forgetten
             word = self.vocabulary.maplist[self.nowlist[self.now]]
             if self.isForgotten[self.now]:
                 self.isForgotten[self.now] = False
@@ -383,23 +388,48 @@ class MainFrame(wx.Frame):
                 self.isForgotten[self.now] = True
                 self.wordTexts[self.now].SetForegroundColour('red')
                 self.wordTexts[self.now].SetLabel('*')
-        elif code == ord('Q'):
+        elif code == wx.WXK_NUMPAD1 or code == ord('1'): # pronounce
             self.pronounce(self.nowlist[self.now], 'uk')
-        elif code == ord('E'):
+        elif code == wx.WXK_NUMPAD2 or code == ord('2'): # pronounce
             self.pronounce(self.nowlist[self.now], 'us')
-        elif code == ord('F'):
+        elif code == wx.WXK_NUMPAD3 or code == ord('3'): # finish one page
             self.onSubmit(None)
             return
-        elif code == ord('Z'):
+        elif code == wx.WXK_NUMPAD0 or code == ord('0'): # similar words
             word = self.vocabulary.maplist[self.nowlist[self.now]]
             string = ''
             for item in self.vocabulary.maplist:
                 if word.isSimilar(item):
                     string += item + '\n'
             self.detail[self.now].SetLabel(string[:-1])
-        elif code == ord('X'):
-            self.wordTexts[self.now].SetLabel('')
+        elif code < 256 and chr(code).isalpha():         # spell
+            spelling = self.wordTexts[self.now].GetLabel()
+            spelling += chr(code).lower()
+            self.wordTexts[self.now].SetLabel(spelling)
+        elif code == wx.WXK_SPACE:                       # check spelling
+            now = self.wordTexts[self.now].GetLabel()
+            word = self.vocabulary.maplist[self.nowlist[self.now]]
 
+            if now == word.word:
+                if self.detail[self.now].GetLabel() != '':
+                    self.now = (self.now + 1) % len(self.nowlist)
+                else:
+                    winsound.MessageBeep(winsound.MB_ICONHAND)
+                    self.wordTexts[self.now].SetLabel(word.word)
+                    self.showWord()
+            else:
+                if self.detail[self.now].GetLabel() == '*':
+                    self.now = (self.now + 1) % len(self.nowlist)
+                else:
+                    winsound.MessageBeep(winsound.MB_OK)
+                    self.isForgotten[self.now] = True
+                    self.wordTexts[self.now].SetForegroundColour('red')
+                    self.wordTexts[self.now].SetLabel('')
+        elif code == wx.WXK_BACK:                       # delete
+            spelling = self.wordTexts[self.now].GetLabel()
+            spelling = spelling[:-1]
+            self.wordTexts[self.now].SetLabel(spelling)
+ 
         if previous != self.now:
             self.refresh(previous, self.now )
 
