@@ -51,7 +51,7 @@ class dictDownloader():
         phonetic.append( div.text )
         # US MP3 file
         tag_a = div.next_sibling.a
-        r = self.s.get( re.search( "http:.*?mp3", tag_a['onclick'] ).group(),
+        r = self.s.get( re.search( "https:.*?mp3", tag_a['onclick'] ).group(),
                                                         stream = True )
         open(''.join(('.\\audio\\us\\',word,'.mp3')), 'wb').write(r.raw.read())
 
@@ -60,7 +60,7 @@ class dictDownloader():
         phonetic.append( div.text )
         # UK MP3 file
         tag_a = div.next_sibling.a
-        r = self.s.get( re.search( "http:.*?mp3", tag_a['onclick'] ).group(),
+        r = self.s.get( re.search( "https:.*?mp3", tag_a['onclick'] ).group(),
                                                         stream = True )
 
         open(''.join(('.\\audio\\uk\\',word,'.mp3')), 'wb').write(r.raw.read())

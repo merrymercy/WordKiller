@@ -135,7 +135,7 @@ class MainFrame(wx.Frame):
     STR['add_word'] = ('Type word list, a word a line', 'Add Word')
 
     def __init__(self, parent, title):
-        wx.Frame.__init__(self, parent, title = title)
+        wx.Frame.__init__(self, parent, title = title, style = wx.DEFAULT_FRAME_STYLE ^ wx.RESIZE_BORDER ^ wx.MAXIMIZE_BOX)
 
         self.initVB()
         self.initUI()
@@ -233,6 +233,8 @@ class MainFrame(wx.Frame):
         self.Bind(wx.EVT_BUTTON, self.onListAll, self.listallButton)
         # help
         self.Bind(wx.EVT_BUTTON, self.onHelp, self.helpButton)
+        # help
+        self.Bind(wx.EVT_BUTTON, self.onSetting, self.settingButton)
         # handle all key events
         self.Bind(wx.EVT_CHAR_HOOK, self.onKeyDown)
 
@@ -281,6 +283,8 @@ class MainFrame(wx.Frame):
         self.timer.Start(1000)
         self.seconds = 0
 
+        self.SetFocus()
+
     def stopReview(self, e):
         #------------- unbind -----------#
         self.Unbind(wx.EVT_KEY_DOWN)
@@ -320,8 +324,8 @@ class MainFrame(wx.Frame):
             self.nowlist = self.vocabulary.popMany(self.WORD_NUM)
             self.isForgotten = [False] * self.WORD_NUM
             self.showInit()
-            self.now = -1
-            self.SetFocus()
+            self.now = 0
+            self.refresh(-1, self.now)
         else:
             wx.MessageBox(self.STR['complete'][0], self.STR['complete'][1],
                     wx.OK)
@@ -368,17 +372,17 @@ class MainFrame(wx.Frame):
         previous = self.now
 
         code = e.GetKeyCode()
-        if code == wx.WXK_UP:
+        if code == wx.WXK_UP or code == ord('['):
             self.now = (self.now - 1) % len(self.nowlist)
-        elif code == wx.WXK_DOWN:
+        elif code == wx.WXK_DOWN or code == ord(']'):
             self.now = (self.now + 1) % len(self.nowlist)
-        elif code == wx.WXK_LEFT or code == wx.WXK_TAB:  # swich show detail
+        elif code == wx.WXK_LEFT or code == wx.WXK_TAB:  # switch show detail
             if self.detail[self.now].GetLabel() == '':
                 self.showWord()
             else:
                 self.detail[self.now].SetLabel('')
                 self.wordTexts[self.now].SetLabel('')
-        elif code == wx.WXK_RIGHT:                       # mark forgetten
+        elif code == wx.WXK_RIGHT or code == ord('\\'):  # mark forgetten
             word = self.vocabulary.maplist[self.nowlist[self.now]]
             if self.isForgotten[self.now]:
                 self.isForgotten[self.now] = False
@@ -387,7 +391,8 @@ class MainFrame(wx.Frame):
             else:
                 self.isForgotten[self.now] = True
                 self.wordTexts[self.now].SetForegroundColour('red')
-                self.wordTexts[self.now].SetLabel('*')
+                self.wordTexts[self.now].SetLabel(self.wordTexts[self.now].
+                                                            GetLabel())
         elif code == wx.WXK_NUMPAD1 or code == ord('1'): # pronounce
             self.pronounce(self.nowlist[self.now], 'uk')
         elif code == wx.WXK_NUMPAD2 or code == ord('2'): # pronounce
@@ -410,11 +415,10 @@ class MainFrame(wx.Frame):
             now = self.wordTexts[self.now].GetLabel()
             word = self.vocabulary.maplist[self.nowlist[self.now]]
 
-            if now == word.word:
+            if now.lower() == word.word.lower():
                 if self.detail[self.now].GetLabel() != '':
                     self.now = (self.now + 1) % len(self.nowlist)
                 else:
-                    winsound.MessageBeep(winsound.MB_ICONHAND)
                     self.wordTexts[self.now].SetLabel(word.word)
                     self.showWord()
             else:
@@ -442,9 +446,86 @@ class MainFrame(wx.Frame):
 ##          ADD WORDS
 ##
     def onAddWords(self, e):
-        dialog = wx.TextEntryDialog(None, self.STR['add_word'][0],
-            self.STR['add_word'][1], '\n'*10, wx.OK|wx.CANCEL|wx.TE_MULTILINE)
-        dialog.SetValue('')
+        class AddWordDialog(wx.Dialog):
+            bookList = ("CET4", "CET6", "TOELF")
+            def __init__(self, vocabulary):
+                wx.Dialog.__init__(self, None, title = "Add Words")
+                self.vocabulary = vocabulary
+
+                # create controls
+                okButton = wx.Button(self, wx.ID_OK, label = "OK")
+                cancelButton = wx.Button(self, wx.ID_CANCEL, label = "Cancel")
+                multiText = self.multiText = wx.TextCtrl(self, value = "\n"*10,
+                        style = wx.TE_MULTILINE)
+                addButton = wx.Button(self, -1, label = "Quick Add")
+                listChoice = self.listChoice = wx.Choice(self, -1,
+                                            choices=AddWordDialog.bookList)
+                numText = self.numText = wx.TextCtrl(self, value = "20",
+                                                        size=(50,25))
+
+                # top label and text entry
+                mainSizer = wx.BoxSizer(wx.VERTICAL)
+                mainSizer.Add(wx.StaticText(self, label = "Type word list, "
+                        "one word a line"), 0, wx.TOP|wx.LEFT, 10)
+                mainSizer.Add(multiText, 1, wx.ALL|wx.EXPAND, 10)
+
+                # quick add button
+                quickSizer = wx.BoxSizer(wx.HORIZONTAL)
+                quickSizer.Add(wx.StaticText(self, label = "From "), 0,
+                        wx.ALIGN_CENTER)
+                quickSizer.Add(listChoice, 0, wx.ALIGN_CENTER)
+                quickSizer.Add(wx.StaticText(self, label = " Randomly "), 0,
+                        wx.ALIGN_CENTER)
+                quickSizer.Add(addButton, 0, wx.ALIGN_CENTER)
+                quickSizer.Add(numText, 0, wx.ALIGN_CENTER|wx.LEFT|wx.RIGHT, 5)
+                quickSizer.Add(wx.StaticText(self, label = " Words"), 0,
+                        wx.ALIGN_CENTER)
+                mainSizer.Add(quickSizer, 0, wx.ALL, 10)
+
+                # bottom buttons
+                mainSizer.Add(wx.StaticLine(self, -1), 0, wx.EXPAND)
+                buttonSizer = wx.BoxSizer(wx.HORIZONTAL)
+                buttonSizer.Add(wx.StaticText(self, label = " "), 1, wx.EXPAND)
+                buttonSizer.Add(okButton, 0, wx.RIGHT, 10)
+                buttonSizer.Add(cancelButton, 0)
+                mainSizer.Add(buttonSizer, 0, wx.ALL|wx.EXPAND, 5)
+
+                self.SetSizer(mainSizer)
+                self.Fit()
+
+                # ctrl init
+                multiText.SetFocus()
+                multiText.SetValue('')
+                listChoice.SetSelection(1)
+
+                # bind event
+                self.Bind(wx.EVT_BUTTON, self.onQuickAdd, addButton)
+            def GetValue(self):
+                return self.multiText.GetValue()
+
+            def onQuickAdd(self, e):
+                book = AddWordDialog.bookList[self.listChoice.GetSelection()]
+                number = int(self.numText.GetValue())
+
+                newWords = ''
+                f = open("list\\" + book + ".txt")
+                ct = 0
+                wordList = f.readlines()
+                random.shuffle(wordList)
+                for word in wordList:
+                    if ct >= number:
+                        break
+
+                    word = word.strip()
+                    if word != '' and (word not in self.vocabulary):
+                        newWords += word + '\n'
+                        ct += 1
+
+                self.multiText.SetValue(self.multiText.GetValue() + newWords)
+
+                f.close()
+
+        dialog = AddWordDialog(self.vocabulary.maplist)
 
         if dialog.ShowModal() == wx.ID_OK:
             rawlist = dialog.GetValue().split('\n')
@@ -470,7 +551,19 @@ class MainFrame(wx.Frame):
 ##          HELP
 ##
     def onHelp(self, e):
-        h = wx.TipWindow(self.helpButton, "Todo")
+        wx.MessageBox("1       play American pronounciation\n"
+                      "2       play British  pronounciation\n"
+                      "3       submit one page\n"
+                      "0       show similar words\n"
+                      "[        cursor up\n"
+                      "]        cursor down\n"
+                      "\        switch forget mark\n"
+                      "Tab       switch detail view\n"
+                      "Spave   check spelling\n"
+                      , "Key Help");
+
+    def onSetting(self, e):
+        h = wx.TipWindow(self.settingButton, "Todo")
 
 ##
 ##          QUIT
