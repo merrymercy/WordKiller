@@ -373,9 +373,23 @@ class MainFrame(wx.Frame):
 
         code = e.GetKeyCode()
         if code == wx.WXK_UP or code == ord('['):
-            self.now = (self.now - 1) % len(self.nowlist)
+            if e.ShiftDown():
+                old = self.now
+                while True:
+                    self.now = (self.now - 1) % len(self.nowlist)
+                    if self.now == old or self.isForgotten[self.now]:
+                        break
+            else:
+                self.now = (self.now - 1) % len(self.nowlist)
         elif code == wx.WXK_DOWN or code == ord(']'):
-            self.now = (self.now + 1) % len(self.nowlist)
+            if e.ShiftDown():
+                old = self.now
+                while True:
+                    self.now = (self.now + 1) % len(self.nowlist)
+                    if self.now == old or self.isForgotten[self.now]:
+                        break
+            else:
+                self.now = (self.now + 1) % len(self.nowlist)
         elif code == wx.WXK_LEFT or code == wx.WXK_TAB:  # switch show detail
             if self.detail[self.now].GetLabel() == '':
                 self.showWord()
