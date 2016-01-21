@@ -253,6 +253,7 @@ class MainFrame(wx.Frame):
     def startReview(self, e):
         self.state = 'review'
 
+
         length = self.vocabulary.updateQueue()
         self.remainText.SetLabel(u'还剩 ' + str(length) + u' 个')
 
@@ -260,8 +261,9 @@ class MainFrame(wx.Frame):
         if length == 0:
             wx.MessageBox(self.STR['no_word'][0], self.STR['no_word'][1],
                     wx.OK)
+            self.state = 'home'
             return
-
+ 
         self.nowlist = self.vocabulary.popMany(self.WORD_NUM)
         self.isForgotten = [False] * self.WORD_NUM
         self.forgetFirstTime = []
@@ -571,7 +573,9 @@ class MainFrame(wx.Frame):
                       "0       show similar words\n"
                       "[        cursor up\n"
                       "]        cursor down\n"
-                      "\        switch forget mark\n"
+                      "[+SHIFT  cursor up to forgotten one\n"
+                      "]+SHIFT  cursor down to forgotten one\n"
+                      "\            switch forget mark\n"
                       "Tab       switch detail view\n"
                       "Spave   check spelling\n"
                       , "Key Help");
