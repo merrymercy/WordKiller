@@ -72,10 +72,40 @@ class Word:
         else:
             return False
 
-    def isSimilar(self, word):
+    # use DP algorithm
+    def calcEditDist(self, a, b):
+        f = []
+        for i in range(len(b)+1):
+            f.append(i)
+
+        for i in range(1, len(a)+1):
+            last = f[0]
+            f[0] = i
+            for j in range(1, len(b)+1):
+                res = 0
+                if (a[i-1] != b[j-1]):
+                    res += 1
+                res += last
+                if (res > f[j - 1] + 1):
+                    res = f[j - 1] + 1
+                if (res > f[j] + 1):
+                    res = f[j] + 1
+                last = f[j]
+                f[j] = res
+
+        return f[len(b)]
+
+    def isSimilar(self, word, factor):
         if self.word == word:
             return False
 
+        # common edit dist
+        dist = self.calcEditDist(self.word, word)
+        if dist <= min(4, max(len(word), len(self.word)) * factor):
+            return True
+        return False
+
+        # for some prefix and postfix occasions
         i = j = 0
         length = min(len(self.word), len(word))
 
@@ -84,7 +114,11 @@ class Word:
         while j < length and self.word[-j-1] == word[-j-1]:
             j += 1
 
-        return 1.0 * (i + j) / ((len(self.word)+len(word)) / 2) > 0.7
+        if 1.0 * (i + j) / ((len(self.word)+len(word)) / 2) > (1.1 - factor):
+            return True
+
+        return False
+        #return 1.0 * (i + j) / ((len(self.word)+len(word)) / 2) > 0.7
 
     def toString(self):
         strlist = []
@@ -119,6 +153,7 @@ class VocabularyBook:
         self.filename = filename
         self.data = {}
         self.config = {}
+        self.dictObj = None
 
         self.loadData()
 
@@ -276,12 +311,15 @@ class VocabularyBook:
 ##
 ##          WORD I/O
 ##
-    def addWord(self, word, dictname):
+    def addWord(self, word):
         if word in self.maplist:
-            print 'ERROR:', word, 'existed already'
-            return
+            # print 'ERROR:', word, 'existed already'
+            return 'ERROR:' + word + ' existed already\n'
 
-        ret = Dictionary(dictname).getword(word)
+        if self.dictObj.db == None:
+            return 'ERROR: cannot open file ' + self.dictObj.dictname + '\n'
+
+        ret = self.dictObj.getword(word)
         if ret:
             self.db.execute('INSERT INTO vocabulary VALUES (?' + ',?'*11 + ')',
                 (ret.word, ret.phonetic[0], ret.phonetic[1], ret.meaning,
@@ -291,11 +329,23 @@ class VocabularyBook:
 
             self.vocabulary.append(ret)
             self.maplist[word] = self.vocabulary[-1]
-            print 'add', word
+            # print 'add', word
+            return 'add ' + word + '\n'
+        else:
+            return "ERROE: cannot find word '" + word + ("' in " + 
+                                        self.dictObj.dictname + '\n')
+
+    def startAddMany(self, dictname):
+        self.dictObj = Dictionary(dictname)
+
+    def endAddMany(self):
+        self.dictObj = None
 
     def addMany(self, wordlist, dictname):
+        res = ''
         for word in wordlist:
-            self.addWord(word, dictname)
+            res = res + self.addWord(word, dictname)
+        return res
 
     def deleteWord(self, word):
         if word.word not in self.maplist:
@@ -345,17 +395,14 @@ class Dictionary:
     def __init__(self, filename):
         self.dictname = filename
 
+        if os.path.exists(self.dictname):
+            self.db = sqlite3.connect(self.dictname)
+        else:
+            self.db = None
+            print 'ERROR:', self.dictname, 'does not exist'
 
     def getword(self, word):
-
-        # todo: move connection to __init__ and optimize vocabulary.addMany()
-        if os.path.exists(self.dictname):
-            db = sqlite3.connect(self.dictname)
-        else:
-            print 'ERROR:', self.dictname, 'does not exist'
-            return None
-
-        row = db.execute('SELECT word, phonetic_us, phonetic_uk,'
+        row = self.db.execute('SELECT word, phonetic_us, phonetic_uk,'
                 'meaning FROM dictionary WHERE word="' + word + '"').fetchone()
 
         if row:
@@ -364,10 +411,11 @@ class Dictionary:
             print "ERROE: cann't find word", word, 'in', self.dictname
             return None
 
-        db.close()
-
     def printList(self):
         pass
+
+    def __del__(self):
+        self.db.close()
 
 # return a easily read time string
 def easyTime(oldTime):

@@ -418,11 +418,21 @@ class MainFrame(wx.Frame):
             return
         elif code == wx.WXK_NUMPAD0 or code == ord('0'): # similar words
             word = self.vocabulary.maplist[self.nowlist[self.now]]
-            string = ''
-            for item in self.vocabulary.maplist:
-                if word.isSimilar(item):
-                    string += item + '\n'
+
+            size = 999
+            factor = 0.40
+            while size > 5:
+                string = ''
+                size = 0
+                factor -= 0.01
+                for item in self.vocabulary.maplist:
+                    if word.isSimilar(item, factor):
+                        string += item + '\n'
+                        size += 1
+            print factor
+
             self.detail[self.now].SetLabel(string[:-1])
+
         elif code < 256 and chr(code).isalpha():         # spell
             spelling = self.wordTexts[self.now].GetLabel()
             spelling += chr(code).lower()
@@ -512,7 +522,7 @@ class MainFrame(wx.Frame):
                 # ctrl init
                 multiText.SetFocus()
                 multiText.SetValue('')
-                listChoice.SetSelection(1)
+                listChoice.SetSelection(2) # default : TOELF
 
                 # bind event
                 self.Bind(wx.EVT_BUTTON, self.onQuickAdd, addButton)
@@ -541,6 +551,57 @@ class MainFrame(wx.Frame):
 
                 f.close()
 
+        class ReportDialog(wx.Dialog):
+            def __init__(self, vocabulary, wordlist, dictname):
+                wx.Dialog.__init__(self, None, title = "Report")
+
+                # store parameters
+                self.voc = vocabulary
+                self.wordlist = wordlist
+                self.dictname = dictname
+
+                # create controls
+                okButton = wx.Button(self, wx.ID_OK, label = "OK")
+                multiText = self.multiText = wx.TextCtrl(self, value =
+                      "\n"*15, style = wx.TE_MULTILINE|wx.TE_READONLY)
+
+                # top label and text entry
+                mainSizer = wx.BoxSizer(wx.VERTICAL)
+                mainSizer.Add(multiText, 1, wx.ALL|wx.EXPAND, 10)
+
+                # bottom buttons
+                buttonSizer = wx.BoxSizer(wx.HORIZONTAL)
+                buttonSizer.Add(wx.StaticText(self, label = " " * 80), 1,
+                                    wx.EXPAND)
+                buttonSizer.Add(okButton, 0, wx.RIGHT, 10)
+                mainSizer.Add(buttonSizer, 0,
+                                    wx.LEFT|wx.RIGHT|wx.BOTTOM|wx.EXPAND, 5)
+
+                self.SetSizer(mainSizer)
+                self.Fit()
+
+                # ctrl init
+                multiText.SetFocus()
+                multiText.SetValue('')
+
+                # timer start
+                self.timer = wx.Timer(self)
+                self.Bind(wx.EVT_TIMER, self.startAdd, self.timer)
+                self.timer.Start(0)
+ 
+            def startAdd(self, e):
+                # add words
+                self.timer.Stop()
+
+                self.voc.startAddMany(self.dictname)
+                for word in self.wordlist:
+                    report = self.voc.addWord(word)
+                    self.multiText.AppendText(report)
+                self.voc.endAddMany()
+
+                self.multiText.AppendText("\nDone.")
+
+
         dialog = AddWordDialog(self.vocabulary.maplist)
 
         if dialog.ShowModal() == wx.ID_OK:
@@ -552,7 +613,9 @@ class MainFrame(wx.Frame):
                 if line.strip():
                     wordlist.append(line)
 
-            self.vocabulary.addMany(wordlist, self.DICTFILE)
+            reportDialog = ReportDialog(self.vocabulary,wordlist,self.DICTFILE)
+            reportDialog.ShowModal()
+            reportDialog.Destroy()
 
         dialog.Destroy()
 
@@ -577,7 +640,7 @@ class MainFrame(wx.Frame):
                       "]+SHIFT  cursor down to forgotten one\n"
                       "\            switch forget mark\n"
                       "Tab       switch detail view\n"
-                      "Spave   check spelling\n"
+                      "Space   check spelling\n"
                       , "Key Help");
 
     def onSetting(self, e):
