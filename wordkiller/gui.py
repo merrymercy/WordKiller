@@ -145,6 +145,7 @@ class MainFrame(wx.Frame):
 ##
     def initVB(self):
         self.vocabulary = VocabularyBook(self.DATAFILE)
+        self.dictionary = Dictionary(self.DICTFILE)
         self.config = self.vocabulary.config
 
         # word unicode to str
@@ -166,6 +167,7 @@ class MainFrame(wx.Frame):
         self.listallButton = wx.Button(panel, label = u'查看')
         self.helpButton    = wx.Button(panel, label = u'帮助')
         self.settingButton = wx.Button(panel, label = u'设置')
+        self.moreButton    = wx.Button(panel, label = u'更多')
         self.firstButton = self.reviewButton
 
         sizer.Add(self.reviewButton,  0, wx.ALL, 5)
@@ -173,6 +175,7 @@ class MainFrame(wx.Frame):
         sizer.Add(self.listallButton, 0, wx.ALL, 5)
         sizer.Add(self.helpButton,    0, wx.ALL, 5)
         sizer.Add(self.settingButton, 0, wx.ALL, 5)
+        sizer.Add(self.moreButton,    0, wx.ALL, 5)
 
         mainSizer.Add(sizer, 0, wx.EXPAND, 5)
         mainSizer.Add(wx.StaticLine(panel, -1), 0, wx.EXPAND)
@@ -347,10 +350,26 @@ class MainFrame(wx.Frame):
             self.detail[i].SetLabel('')
         self.indicate[self.now].SetLabel('')
 
+    def getPos(self, pos):
+        return pos if pos < 16 else 16
+
     def showWord(self):
         word = self.vocabulary.maplist[self.nowlist[self.now]]
+        res = self.dictionary.lookUp(word.word)
 
-        self.detail[self.now].SetLabel(word.toString())
+        strlist = []
+        if res:
+            strlist.append(res[3]) # meaning
+            strlist.append('')     # 
+            strlist.append(res[4] if res[4] else 'Haha!') # sentence
+            strlist.append('')     # 
+            strlist.append('  '.join((res[1], res[2]))) # phonetic
+            strlist.append(word.toString())
+        else:
+            strlist.append("Error")
+            
+        self.detail[self.getPos(self.now)].SetLabel('\n'.join(strlist))
+        self.detail[self.getPos(self.now)].Wrap(self.GetSize().width / 1.5)
         self.wordTexts[self.now].SetLabel(word.word)
 
     def pronounce(self, word, style = None):
@@ -366,7 +385,7 @@ class MainFrame(wx.Frame):
 
         self.indicate[previous].SetLabel('')
         self.indicate[now].SetLabel(u'→')
-        self.detail[previous].SetLabel('')
+        self.detail[self.getPos(previous)].SetLabel('')
 
         self.pronounce(word.word)
 
@@ -393,10 +412,10 @@ class MainFrame(wx.Frame):
             else:
                 self.now = (self.now + 1) % len(self.nowlist)
         elif code == wx.WXK_LEFT or code == wx.WXK_TAB:  # switch show detail
-            if self.detail[self.now].GetLabel() == '':
+            if self.detail[self.getPos(self.now)].GetLabel() == '':
                 self.showWord()
             else:
-                self.detail[self.now].SetLabel('')
+                self.detail[self.getPos(self.now)].SetLabel('')
                 self.wordTexts[self.now].SetLabel('')
         elif code == wx.WXK_RIGHT or code == ord('\\'):  # mark forgetten
             word = self.vocabulary.maplist[self.nowlist[self.now]]
@@ -431,7 +450,7 @@ class MainFrame(wx.Frame):
                         size += 1
             print factor
 
-            self.detail[self.now].SetLabel(string[:-1])
+            self.detail[self.getPos(self.now)].SetLabel(string[:-1])
 
         elif code < 256 and chr(code).isalpha():         # spell
             spelling = self.wordTexts[self.now].GetLabel()
@@ -442,13 +461,13 @@ class MainFrame(wx.Frame):
             word = self.vocabulary.maplist[self.nowlist[self.now]]
 
             if now.lower() == word.word.lower():
-                if self.detail[self.now].GetLabel() != '':
+                if self.detail[self.getPos(self.now)].GetLabel() != '':
                     self.now = (self.now + 1) % len(self.nowlist)
                 else:
                     self.wordTexts[self.now].SetLabel(word.word)
                     self.showWord()
             else:
-                if self.detail[self.now].GetLabel() == '*':
+                if self.detail[self.getPos(self.now)].GetLabel() == '*':
                     self.now = (self.now + 1) % len(self.nowlist)
                 else:
                     winsound.MessageBeep(winsound.MB_OK)
@@ -552,13 +571,13 @@ class MainFrame(wx.Frame):
                 f.close()
 
         class ReportDialog(wx.Dialog):
-            def __init__(self, vocabulary, wordlist, dictname):
+            def __init__(self, vocabulary, wordlist, dictObj):
                 wx.Dialog.__init__(self, None, title = "Report")
 
                 # store parameters
                 self.voc = vocabulary
                 self.wordlist = wordlist
-                self.dictname = dictname
+                self.dictObj = dictObj
 
                 # create controls
                 okButton = wx.Button(self, wx.ID_OK, label = "OK")
@@ -593,7 +612,7 @@ class MainFrame(wx.Frame):
                 # add words
                 self.timer.Stop()
 
-                self.voc.startAddMany(self.dictname)
+                self.voc.startAddMany(self.dictObj)
                 for word in self.wordlist:
                     report = self.voc.addWord(word)
                     self.multiText.AppendText(report)
@@ -613,7 +632,8 @@ class MainFrame(wx.Frame):
                 if line.strip():
                     wordlist.append(line)
 
-            reportDialog = ReportDialog(self.vocabulary,wordlist,self.DICTFILE)
+            reportDialog = ReportDialog(self.vocabulary, wordlist,
+                                                            self.dictionary)
             reportDialog.ShowModal()
             reportDialog.Destroy()
 

@@ -6,10 +6,8 @@ import random
 import os
 
 class Word:
-    def __init__(self, word, phonetic, meaning):
+    def __init__(self, word):
         self.word = word
-        self.phonetic = phonetic
-        self.meaning = meaning
         self.right = 0
         self.wrong = 0
         self.record = ''
@@ -121,20 +119,17 @@ class Word:
         #return 1.0 * (i + j) / ((len(self.word)+len(word)) / 2) > 0.7
 
     def toString(self):
-        strlist = []
-        strlist.append(self.meaning)
-        strlist.append(''.join((self.phonetic[0], '  ', self.phonetic[1])))
-        strlist.append('   '.join(('level:', str(self.level),
-            'right:', str(self.right), 'wrong:', str(self.wrong))))
+        res = '   '.join(('level:', str(self.level),
+            'right:', str(self.right), 'wrong:', str(self.wrong)))
+        res = ''.join( (res, '\n') )
+        return res
+
+        '''
         strlist.append('   '.join(('last:', easyTime(self.lastTime)+' ago')))
         strlist.append('   '.join(('add:', easyTime(self.addTime)+' ago')))
-
-        return '\n'.join(strlist)
+        '''
 
     def printSelf(self):
-        print self.word, self.phonetic[0].encode('gbk','ignore'), self.\
-                        phonetic[1].encode('gbk','ignore')
-        print self.meaning
         print 'level:', self.level
         print 'right:', self.right, '   wrong', self.wrong
         print 'addTime:', time.asctime(time.localtime(self.addTime))
@@ -173,9 +168,6 @@ class VocabularyBook:
             db = sqlite3.connect(self.filename)
             db.execute(''' CREATE TABLE vocabulary (
                 WORD            TEXT,
-                PHONETIC_US     TEXT,
-                PHONETIC_UK     TEXT,
-                MEANING         TEXT,
                 RIGHT           INT,
                 WRONG           INT,
                 RECORD          TEXT,
@@ -191,15 +183,14 @@ class VocabularyBook:
             db.commit()
 
         # load vocabulary from database
-        cursor = db.execute('SELECT word, phonetic_us, phonetic_uk, meaning,'
-                   'right, wrong, record, level, addtime, lasttime, nexttime,'
-                   'inwrong FROM vocabulary')
+        cursor = db.execute('SELECT word, right, wrong, record, level, '
+                'addtime, lasttime, nexttime, inwrong FROM vocabulary')
         for row in cursor:
-            word = Word(row[0], (row[1],row[2]), row[3])
-            word.right   = row[4];  word.wrong = row[5]
-            word.record  = row[6];  word.level = row[7]
-            word.addTime = row[8];  word.lastTime = row[9]
-            word.nextTime= row[10]; word.inWrong = True if row[11] else False
+            word = Word(row[0])
+            word.right   = row[1];  word.wrong = row[2]
+            word.record  = row[3];  word.level = row[4]
+            word.addTime = row[5];  word.lastTime = row[6]
+            word.nextTime= row[7]; word.inWrong = True if row[8] else False
 
             self.vocabulary.append(word)
 
@@ -226,20 +217,20 @@ class VocabularyBook:
         db = self.db
 
         for word in self.vocabulary:
-            db.execute('UPDATE vocabulary SET'
-                ' word=' + '"' + word.word + '"' +
-                ',phonetic_us=' + '"' + word.phonetic[0] + '"' +
-                ',phonetic_uk=' + '"' + word.phonetic[1] + '"' +
-                ',meaning='  + '"' + word.meaning + '"' +
-                ',right='    + str(word.right) +
-                ',wrong='    + str(word.wrong) +
-                ',record='   + '"' + word.record + '"' +
-                ',level='    + str(word.level) +
-                ',addtime='  + str(word.addTime) +
-                ',lasttime=' + str(word.lastTime) +
-                ',nexttime=' + str(word.nextTime) +
-                ',inwrong='  + ('1' if word.inWrong else '0') +
-                ' WHERE word="' + word.word + '"')
+            try :
+                db.execute('UPDATE vocabulary SET'
+                    ' right='    + str(word.right) +
+                    ',wrong='    + str(word.wrong) +
+                    ',record='   + '"' + word.record + '"' +
+                    ',level='    + str(word.level) +
+                    ',addtime='  + str(word.addTime) +
+                    ',lasttime=' + str(word.lastTime) +
+                    ',nexttime=' + str(word.nextTime) +
+                    ',inwrong='  + ('1' if word.inWrong else '0') +
+                    ' WHERE word="' + word.word + '"')
+            except Exception, e:
+                print word.word
+                print e
 
         #if self.reviewQueue != []:
         string = ','.join(self.reviewQueue)
@@ -286,7 +277,7 @@ class VocabularyBook:
         return self.config[key]
 
 ##
-##          REVIEW QUEEN
+##          REVIEW QUEUE
 ##
     def updateQueue(self):
         for item in self.vocabulary:
@@ -321,10 +312,10 @@ class VocabularyBook:
 
         ret = self.dictObj.getword(word)
         if ret:
-            self.db.execute('INSERT INTO vocabulary VALUES (?' + ',?'*11 + ')',
-                (ret.word, ret.phonetic[0], ret.phonetic[1], ret.meaning,
-                  ret.right, ret.wrong, ret.record, ret.level, ret.addTime,
-                  ret.lastTime, ret.nextTime, 1 if ret.inWrong else 0))
+            self.db.execute('INSERT INTO vocabulary VALUES (?' + ',?'*8 + ')',
+                (ret.word,  ret.right, ret.wrong, ret.record, ret.level,
+                 ret.addTime, ret.lastTime, ret.nextTime,
+                 1 if ret.inWrong else 0))
             self.db.commit()
 
             self.vocabulary.append(ret)
@@ -335,17 +326,11 @@ class VocabularyBook:
             return "ERROE: cannot find word '" + word + ("' in " + 
                                         self.dictObj.dictname + '\n')
 
-    def startAddMany(self, dictname):
-        self.dictObj = Dictionary(dictname)
+    def startAddMany(self, dictObj):
+        self.dictObj = dictObj
 
     def endAddMany(self):
         self.dictObj = None
-
-    def addMany(self, wordlist, dictname):
-        res = ''
-        for word in wordlist:
-            res = res + self.addWord(word, dictname)
-        return res
 
     def deleteWord(self, word):
         if word.word not in self.maplist:
@@ -376,7 +361,6 @@ class VocabularyBook:
             self.maplist[word].printSelf()
         print '----------- Queue End -----------'
 
-
     def printData(self):
         print '---------- Data Begin ----------'
         for word in self.vocabulary:
@@ -403,16 +387,29 @@ class Dictionary:
 
     def getword(self, word):
         row = self.db.execute('SELECT word, phonetic_us, phonetic_uk,'
-                'meaning FROM dictionary WHERE word="' + word + '"').fetchone()
+                'meaning, sentence FROM dictionary WHERE word="'
+                + word + '"').fetchone()
 
         if row:
-            return Word(row[0], (row[1], row[2]), row[3])
+            return Word(row[0])
         else:
             print "ERROE: cann't find word", word, 'in', self.dictname
             return None
 
-    def printList(self):
-        pass
+    def lookUp(self, word):
+        row = self.db.execute('SELECT word, phonetic_us, phonetic_uk,'
+                'meaning, sentence FROM dictionary WHERE word="'
+                + word + '"').fetchone()
+
+        return row
+
+    def getlist(self):
+        cursor = self.db.execute( 'SELECT word FROM dictionary' )
+        res = []
+        for row in cursor:
+            res.append(row[0])
+
+        return res
 
     def __del__(self):
         self.db.close()

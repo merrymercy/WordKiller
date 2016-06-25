@@ -1,7 +1,6 @@
 IMPORTANT:
 
 ~~~~~~~~~~~~~~~~~
-# 加上例句
 # RANDOM PICK
 ~~~~~~~~~~~~~~~~~
 
@@ -17,3 +16,12 @@ OPTIONAL:
 # 记录本次回忆时间 在此单词上总用时
 
 LONG:
+
+
+
+
+
+NOTE:
+# how to print phonetic
+  print self.phonetic[0].encode('gbk','ignore')
+
