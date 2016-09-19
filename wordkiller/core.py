@@ -99,11 +99,12 @@ class Word:
 
         # common edit dist
         dist = self.calcEditDist(self.word, word)
-        if dist <= min(4, max(len(word), len(self.word)) * factor):
+        if dist <= min(5, max(len(word), len(self.word)) * factor):
             return True
         return False
 
         # for some prefix and postfix occasions
+        '''
         i = j = 0
         length = min(len(self.word), len(word))
 
@@ -112,11 +113,13 @@ class Word:
         while j < length and self.word[-j-1] == word[-j-1]:
             j += 1
 
-        if 1.0 * (i + j) / ((len(self.word)+len(word)) / 2) > (1.1 - factor):
+        if i * j != 0 and (1.0 * min(len(self.word), len(word)) /
+                                max(i, j) > 1 - factor / 2):
             return True
 
         return False
         #return 1.0 * (i + j) / ((len(self.word)+len(word)) / 2) > 0.7
+        '''
 
     def toString(self):
         res = '   '.join(('level:', str(self.level),
@@ -286,15 +289,17 @@ class VocabularyBook:
                 self.reviewQueue.append(item.word)
         return len(self.reviewQueue)
 
-    def popMany(self, n):
+    def getQueueFront(self, n):
         if n > len(self.reviewQueue):
             n = len(self.reviewQueue) 
         ret = self.reviewQueue[0:n]
-        del self.reviewQueue[0:n]
         random.shuffle(ret)
         return ret
 
-    def forcePush(self, word):
+    def popQueueFront(self, n):
+        del self.reviewQueue[0:n]
+
+    def forcePushQueue(self, word):
         if word in self.maplist:
             self.reviewQueue.append(word)
         else:

@@ -125,7 +125,7 @@ class ListFrame(wx.Frame):
 
 class MainFrame(wx.Frame):
     DATAFILE = 'book1.db'
-    DICTFILE = 'dict15000.db'
+    DICTFILE = 'newdict.db'
     WORD_NUM = 20 # words per page
     STR = {}
     STR['no_word'] = ('No words need to be reviewd', 'No Words')
@@ -267,7 +267,7 @@ class MainFrame(wx.Frame):
             self.state = 'home'
             return
  
-        self.nowlist = self.vocabulary.popMany(self.WORD_NUM)
+        self.nowlist = self.vocabulary.getQueueFront(self.WORD_NUM)
         self.isForgotten = [False] * self.WORD_NUM
         self.forgetFirstTime = []
 
@@ -311,12 +311,13 @@ class MainFrame(wx.Frame):
         if ret == wx.NO:
             return
 
+        self.vocabulary.popQueueFront(self.WORD_NUM)
         for i in range(len(self.nowlist)):
             word = self.vocabulary.maplist[self.nowlist[i]]
             if self.isForgotten[i]:
                 self.forgetFirstTime.append(word.word)
                 word.doWrong()
-                self.vocabulary.forcePush(word.word)
+                self.vocabulary.forcePushQueue(word.word)
             else:
                 word.doRight()
 
@@ -326,7 +327,7 @@ class MainFrame(wx.Frame):
         self.remainText.SetLabel(u'还剩 ' + str(length) + u' 个')
 
         if length > 0:
-            self.nowlist = self.vocabulary.popMany(self.WORD_NUM)
+            self.nowlist = self.vocabulary.getQueueFront(self.WORD_NUM)
             self.isForgotten = [False] * self.WORD_NUM
             self.showInit()
             self.now = 0
@@ -435,19 +436,32 @@ class MainFrame(wx.Frame):
         elif code == wx.WXK_NUMPAD3 or code == ord('3'): # finish one page
             self.onSubmit(None)
             return
+        elif code == wx.WXK_NUMPAD2 or code == ord('9'): # hide all red words
+            for i in range(len(self.nowlist)):
+                if self.isForgotten[i]:
+                    self.detail[i].SetLabel('')
+                    self.wordTexts[i].SetLabel('')
         elif code == wx.WXK_NUMPAD0 or code == ord('0'): # similar words
             word = self.vocabulary.maplist[self.nowlist[self.now]]
 
-            size = 999
-            factor = 0.40
-            while size > 5:
+            size = 0
+            factor = 0.42
+            cnt = 0
+            while size > 5 or size == 0:
                 string = ''
                 size = 0
-                factor -= 0.01
                 for item in self.vocabulary.maplist:
                     if word.isSimilar(item, factor):
-                        string += item + '\n'
+                        string = ''.join((string, item,'\n'))
                         size += 1
+                if size == 0:
+                    factor += 0.01
+                else:
+                    factor -= 0.01
+                cnt += 1
+                if cnt > 20:
+                    break
+
             print factor
 
             self.detail[self.getPos(self.now)].SetLabel(string[:-1])
@@ -653,6 +667,7 @@ class MainFrame(wx.Frame):
         wx.MessageBox("1       play American pronounciation\n"
                       "2       play British  pronounciation\n"
                       "3       submit one page\n"
+                      "9       hide all red words\n"
                       "0       show similar words\n"
                       "[        cursor up\n"
                       "]        cursor down\n"
@@ -690,7 +705,15 @@ class app(wx.App):
         frame.Show()
         return 1
 
+import ctypes
+def hide():
+    whnd = ctypes.windll.kernel32.GetConsoleWindow()    
+    if whnd != 0:    
+        ctypes.windll.user32.ShowWindow(whnd, 0)    
+        ctypes.windll.kernel32.CloseHandle(whnd)   
+
 if __name__ == '__main__':
+    #hide()
     prog = app(0)
     prog.MainLoop()
 

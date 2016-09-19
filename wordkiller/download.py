@@ -333,5 +333,5 @@ dictFile = 'dict15000.db'
 errFile  = 'error.txt'
 
 if __name__ == '__main__':
-    updateDict(dictFile)
-    #downFile( listFile, dictFile, errFile )
+    #updateDict(dictFile)
+    downFile( listFile, dictFile, errFile )

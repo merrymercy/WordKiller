@@ -1,12 +1,12 @@
 ## IMPORTANT
 
 * RANDOM PICK
+* 优化相近单词
 * 收藏单词
 * 设置，多生词本
 
 ## OPTIONAL
 
-* accommodate 太长
 * overview + detail 重写GUI
 * 快速删除
 * armor释义
