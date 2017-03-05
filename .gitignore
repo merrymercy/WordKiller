@@ -1,0 +1,6 @@
+backup
+*.exe.lnk
+
+wordkiller/build
+wordkiller/dist
+*.pyc

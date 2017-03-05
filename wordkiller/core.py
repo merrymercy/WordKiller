@@ -124,7 +124,7 @@ class Word:
     def toString(self):
         res = '   '.join(('level:', str(self.level),
             'right:', str(self.right), 'wrong:', str(self.wrong)))
-        res = ''.join( (res, '\n') )
+        res = ''.join( (res, '\n', self.record ,'\n') )
         return res
 
         '''
@@ -262,8 +262,9 @@ class VocabularyBook:
                             day(10), day(15), day(20), day(30) ]
             '''
             cfg['interval'] = [ -1, hour(6), hour(12), day(1), day(1), day(1),
-                            day(1), day(2), day(3), day(5), day(5), day(5),
-                            day(10), day(15), day(20), day(30) ]+20*[day(30)]
+                           day(1), day(2), day(3), day(5), day(5), day(5),
+                           day(10), day(15), day(20), day(30), day(30), day(30),
+                           day(30), day(35), day(40), day(45)]
 
         if 'show' not in cfg:
             print 'add show to config'
@@ -283,10 +284,12 @@ class VocabularyBook:
 ##          REVIEW QUEUE
 ##
     def updateQueue(self):
+        print "before", len(self.reviewQueue)
         for item in self.vocabulary:
             if (item.word not in self.reviewQueue) and item.match(self.config\
                     ['interval']):
                 self.reviewQueue.append(item.word)
+        print "after", len(self.reviewQueue)
         return len(self.reviewQueue)
 
     def getQueueFront(self, n):
